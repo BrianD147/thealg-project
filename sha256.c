@@ -71,6 +71,17 @@ void sha256(){
     b = a;
     a = T1 + T2;
   }
+
+  // Step 4.
+  H[0] = a + H[0];
+  H[1] = b + H[1];
+  H[2] = c + H[2];
+  H[3] = d + H[3];
+  H[4] = e + H[4];
+  H[5] = f + H[5];
+  H[6] = g + H[6];
+  H[7] = h + H[7];
+
 }
 
 // See Section 3.2 for definitions
