@@ -2,7 +2,7 @@
 // The Secure Hash Algorithm, 256 bit version
 
 #include <stdio.h> // Usual input/output header file
-#include <stdin.h> // For using fixed bit length integers
+#include <stdint.h> // For using fixed bit length integers
 
 void sha256();
 
@@ -22,7 +22,8 @@ uint32_t Ch(uint32_t x, uint32_t y, uint32_t z);
 uint32_t Maj(uint32_t x, uint32_t y, uint32_t z);
 
 int main (int argc, char *argv[]){
-  
+  sha256();
+
   return 0;
 }
 
@@ -46,7 +47,7 @@ void sha256(){
     0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-  }
+  };
 
   uint32_t W[64]; // Message schedule (Section 6.2).
   uint32_t a, b, c, d, e, f, g, h; // Working variables (Section 6.2).
@@ -63,52 +64,57 @@ void sha256(){
     0x9b05688c,
     0x1f83d9ab,
     0x5be0cd19
-  }
+  };
 
   // Current message block
-  uint32_t M[16];
+  uint32_t M[16] = {0, 0, 0, 0, 0, 0, 0, 0};
 
   // For looping
-  int t = 0;
+  int i, t;
 
-  // From page 22, W[t] = M[t] for 0<= t ,+ 15.
-  for (t=0; t<16; t++){
-    W[t] = M[t];
-  }
+  // Loop through message blocks as per page 22.
+  for(i=0; i<1; i++){
 
-  // From page 22, W[t] =  ...
-  for (t=16; t<64; t++){
-    sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
-  }
+    // From page 22, W[t] = M[t] for 0<= t ,+ 15.
+    for (t=0; t<16; t++){
+      W[t] = M[t];
+    }
+
+    // From page 22, W[t] =  ...
+    for (t=16; t<64; t++){
+      sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
+    }
   
-  // Initialise a-h as per Step 2, Page 19.
-  a = H[0]; b = H[1]; c = H[2]; d = H[3];
-  e = H[4]; f = H[5]; g = H[6]; h = H[7]; 
+    // Initialise a-h as per Step 2, Page 19.
+    a = H[0]; b = H[1]; c = H[2]; d = H[3];
+    e = H[4]; f = H[5]; g = H[6]; h = H[7]; 
 
-  // Step 3.
-  for (t=0; t<64; t++){
-    T1 = h + SIG1(e) + Ch(e, f, g) + K[t] + W[t];
-    T2 = SIG0(a) + Maj(a, b, c);
-    h = g;
-    g = f;
-    f = e;
-    e = d + T1;
-    d = c;
-    c = b;
-    b = a;
-    a = T1 + T2;
+    // Step 3.
+    for (t=0; t<64; t++){
+      T1 = h + SIG1(e) + Ch(e, f, g) + K[t] + W[t];
+      T2 = SIG0(a) + Maj(a, b, c);
+      h = g;
+      g = f;
+      f = e;
+      e = d + T1;
+      d = c;
+      c = b;
+      b = a;
+      a = T1 + T2;
+    }
+
+    // Step 4.
+    H[0] = a + H[0];
+    H[1] = b + H[1];
+    H[2] = c + H[2];
+    H[3] = d + H[3];
+    H[4] = e + H[4];
+    H[5] = f + H[5];
+    H[6] = g + H[6];
+    H[7] = h + H[7];
+
+    printf("%x, %x, %x, %x, %x, %x, %x, %x\n", H[0], H[1], H[2], H[3], H[4], H[5], H[6], H[7]);
   }
-
-  // Step 4.
-  H[0] = a + H[0];
-  H[1] = b + H[1];
-  H[2] = c + H[2];
-  H[3] = d + H[3];
-  H[4] = e + H[4];
-  H[5] = f + H[5];
-  H[6] = g + H[6];
-  H[7] = h + H[7];
-
 }
 
 // See Section 3.2 for definitions
