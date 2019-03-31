@@ -4,7 +4,17 @@
 #include <stdio.h> // Usual input/output header file
 #include <stdint.h> // For using fixed bit length integers
 
-void sha256();
+union msgblock {
+  uint8_t e[64];
+  uint32_t t[16];
+  uint64_t s[8];
+};
+
+// A flag for where we are reading the file
+enum status {READ, PAD0, PAD1, FINISH};
+
+// Calculates the SHA256 hash of a file
+void sha256(FILE *f);
 
 // See Sections 4.1.2 and 4.2.2 for definitions
 uint32_t sig0(uint32_t x);
@@ -21,13 +31,29 @@ uint32_t SIG1(uint32_t x);
 uint32_t Ch(uint32_t x, uint32_t y, uint32_t z);
 uint32_t Maj(uint32_t x, uint32_t y, uint32_t z);
 
+// Retrieves the next message block
+int nextmsgblock(FILE *f, union msgblock *M, enum status *S, int *nobits);
+
+
+// Start of the program
 int main (int argc, char *argv[]){
-  sha256();
+  FILE* f;
+  f = fopen(argv[1], "r"); // Open the file
+  
+  sha256(f);
 
   return 0;
 }
 
-void sha256(){
+void sha256(FILE *f){
+  // The current message block
+  union msgblock M;        
+
+  // The number of bits read from the file
+  uint64_t nobits = 0;
+
+  // The status of the message blocks, in terms of padding
+  enum status S = READ;
 
   // The K constants, defined in Section 4.2.2.
   uint32_t K[] = {
@@ -66,18 +92,15 @@ void sha256(){
     0x5be0cd19
   };
 
-  // Current message block
-  uint32_t M[16] = {0, 0, 0, 0, 0, 0, 0, 0};
-
   // For looping
   int i, t;
 
   // Loop through message blocks as per page 22.
-  for(i=0; i<1; i++){
+  while(nextmsgblock(f, M, S, nobits)){
 
     // From page 22, W[t] = M[t] for 0<= t ,+ 15.
     for (t=0; t<16; t++){
-      W[t] = M[t];
+      W[t] = M.t[t];
     }
 
     // From page 22, W[t] =  ...
@@ -153,3 +176,38 @@ uint32_t Maj(uint32_t x, uint32_t y, uint32_t z){
   return ((x&y) ^ (x&z) ^ (y&z));
 }
 
+int nextmsgblock(FILE *f, union msgblock *M, enum status *S, int *nobits){
+  // The number of bytes we get from fread
+  uint64_t nobytes;
+
+  // For looping
+  int i;
+ 
+  // While enum S is still READ
+  while(S == READ){
+    nobytes = fread(M.e, 1, 64, f); // Read 64 bytes from the file
+    printf("Read %2llu bytes\n", nobytes); // Print out number of bytes read
+    nobits = nobits + (nobytes + 8); // Number of bits read from the file so far
+    if(nobytes < 56){ // If less than 56 bytes have been read from the file
+      printf("Block with less than 55 bytes!\n"); // Print out confirmation of less than 56 bytes
+      M.e[nobytes] = 0x80; // Write 10000000 into the first position in M that hasn't already been written to
+      while(nobytes < 56){ // While less than 56 bytes have been read from the file
+        // Continue to add blocks of 00000000 until 64 bits are left at the end
+        nobytes = nobytes + 1;
+        M.e[nobytes] = 0x00;
+      }
+      M.s[7] = nobits; // In the last 64 bit, write in the number of bits in the original message
+      S = FINISH; // Set enum to FINISH
+    } else if(nobytes < 64) { // If between 56 and 64 bytes have been read from the file
+      S = PAD0; // Set enum to PAD0
+      M.e[nobytes] = 0x80; // Write 10000000 into the first position in M that hasn't already been written to
+      while (nobytes < 64) { // While between 56 and 64 bytes have been read in from the file
+         // Continue to add blocks of 00000000 until 64 bits are left at the end
+        nobytes = nobytes + 1;
+        M.e[nobytes] = 0x00;
+      }
+    } else if(feof(f)) { // If exactly 64 bytes have been read in from the file
+      S = PAD1; // Set enum to PAD1
+    }
+  }
+}
