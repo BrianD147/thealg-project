@@ -3,6 +3,8 @@
 
 #include <stdio.h> // Usual input/output header file
 #include <stdint.h> // For using fixed bit length integers
+#include <errno.h> // Used to retrieve error conditions and numbers
+#include <string.h> // Used to properly print arrays of characters
 
 // Represents a message block
 union msgblock {
@@ -32,23 +34,22 @@ uint32_t SIG1(uint32_t x);
 uint32_t Ch(uint32_t x, uint32_t y, uint32_t z);
 uint32_t Maj(uint32_t x, uint32_t y, uint32_t z);
 
-// Retrieves the next message block
+// Retrieves the next message block)
 int nextmsgblock(FILE *msgf, union msgblock *M, enum status *S, uint64_t *nobits);
-
 
 // Start of the program
 int main (int argc, char *argv[]){
   // Open the file given as first command line argument
-  FILE* msgf;
+  FILE *msgf;
   msgf = fopen(argv[1], "r"); // Open the file
-  // ***
-  // Should do erro checking here
-  // ***
 
-  sha256(msgf); // Run the secure has algorithm on the file
-
-  fclose(msgf); // Close the file
-  return 0;
+  if(msgf == NULL){
+    fprintf(stderr, "Error opening the file: %s\n", strerror(errno));
+  } else {
+    sha256(msgf); // Run the secure has algorithm on the file
+    fclose(msgf); // Close the file
+  } 
+   return 0;
 }
 
 void sha256(FILE *msgf){
@@ -106,7 +107,7 @@ void sha256(FILE *msgf){
 
     // From page 22, W[t] = M[t] for 0<= t ,+ 15.
     for (t=0; t<16; t++){
-      W[t] = M.t[t];
+      W[t] = M.t[t]; 
     }
 
     // From page 22, W[t] =  ...
@@ -237,3 +238,4 @@ int nextmsgblock(FILE *msgf, union msgblock *M, enum status *S, uint64_t *nobits
   // If the program gets this far, return 1 so the function is called again
   return 1;
 }
+
